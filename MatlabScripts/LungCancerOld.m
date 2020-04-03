@@ -308,7 +308,7 @@ else ;    %  Load data from previously saved .mat file
     axis([vaxh(1) vaxh(2) vaxv(1) vaxv(2)]) ;
 
     orient landscape ;
-    savestr = ['LungCancer2011ip' num2str(ipart) 'RawDatOverlay'] ;
+    savestr = ['../GraphicalOutputs/LungCancer2011ip' num2str(ipart) 'RawDatOverlay'] ;
     print('-dpsc2',savestr) ;
 
 
@@ -326,7 +326,7 @@ else ;    %  Load data from previously saved .mat file
     axis([vaxh(1) vaxh(2) vaxv(1) vaxv(2)]) ;
 
     orient landscape ;
-    savestr = ['LungCancer2011ip' num2str(ipart) 'Log10DatOverlay'] ;
+    savestr = ['../GraphicalOutputs/LungCancer2011ip' num2str(ipart) 'Log10DatOverlay'] ;
     print('-dpsc2',savestr) ;
 
 
@@ -337,7 +337,7 @@ else ;    %  Load data from previously saved .mat file
                      ['Gene = ' GeneNamesS{ig}] ...
                      ['n = ' num2str(n) 'patients'] ... 
                      ['d = ' num2str(nbp) ' base pairs']}} ;
-    savestr = ['LungCancer2011ip' num2str(ipart) 'PCAScatPlot'] ;
+    savestr = ['../GraphicalOutputs/LungCancer2011ip' num2str(ipart) 'PCAScatPlot'] ;
     paramstruct = struct('npcadiradd',4, ...
                          'titlecellstr',titlecellstr, ...
                          'labelcellstr',{{'PC 1'; 'PC 2'; 'PC 3'; 'PC 4'}}, ...
@@ -353,7 +353,7 @@ else ;    %  Load data from previously saved .mat file
                      ['Gene = ' GeneNamesS{ig}] ...
                      ['n = ' num2str(n) 'patients'] ... 
                      ['d = ' num2str(nbp) ' base pairs']}} ;
-    savestr = ['LungCancer2011ip' num2str(ipart) 'PCAScatPlotBrushed'] ;
+    savestr = ['../GraphicalOutputs/LungCancer2011ip' num2str(ipart) 'PCAScatPlotBrushed'] ;
     paramstruct = struct('npcadiradd',4, ...
                          'icolor',mcolor, ...
                          'titlecellstr',titlecellstr, ...
@@ -388,7 +388,7 @@ else ;    %  Load data from previously saved .mat file
     axis([vaxh(1) vaxh(2) vaxv(1) vaxv(2)]) ;
 
     orient landscape ;
-    savestr = ['LungCancer2011ip' num2str(ipart) 'Log10DatOverlayBrushed'] ;
+    savestr = ['../GraphicalOutputs/LungCancer2011ip' num2str(ipart) 'Log10DatOverlayBrushed'] ;
     print('-dpsc2',savestr) ;
 
 
