@@ -31,17 +31,18 @@ vchrom = unique(vchromall) ;
 disp('  Check chromosome numbers:    10 19 3 9') ;
 vchrom'
 
-GeneNamesS = {'PIK3CA'; 'CDK2A'; 'P10'; 'STK11'; } 
+GeneNamesS = {'PIK3CA'; 'CDKN2A'; 'P10'; 'STK11'; } 
     %  Structure with Gene Names
     %  Manually copied from spreadsheet
     %  Put in same order as in vchrom
-    %      Note CDK2A is used in the file, but should really be CDKN2A
+    %      Note CDK2A was used in the file, but should really be CDKN2A
 
 disp('  Check gene names against entries in file:') ;
 for ig = 1:ng ;
   disp(['    For Chromosome ' num2str(vchrom(ig)) ...
                     '    Gene Name is ' GeneNamesS{ig}]) ;
 end ;
+
 
 
 disp(' ') ;
@@ -78,9 +79,8 @@ vbpnall = numeric(:,1) ;
     %  all base pair numbers in input file
 mctsall = numeric(:,2:end) ;
     %  matrix of all counts
-CaseNamesS = txt(1,2:end) ;
+CaseNamesS = txt ;
     %  Structure of Case Names
-
 
 numeric = [] ;
 txt = [] ;
@@ -114,7 +114,6 @@ CaseNamesS{1}
 
 disp('Check last Case Name is preview.20110919/110630_UNC11-SN627_0112_AD0CVJABXX8TCGA-22-5482-01A-01R-1635-07') ;
 CaseNamesS{end}
-
 
 
 %  Put Data into Structure
@@ -190,7 +189,7 @@ axis([vaxh(1) vaxh(2) vaxv(1) vaxv(2)]) ;
 %
 figure(2) ;
 clf ;
-ig = 2 ;    %  for Chromosome 9 = CDK2A
+ig = 2 ;    %  for Chromosome 9 = CDKN2A
 plot(DataS{ig,2}(:,end),'k-') ;
 title(CaseNamesS{end}) ;
 xlabel('exonic nt number, not genomic position') ;
@@ -212,6 +211,52 @@ save(datfilename,'DataS','CaseNamesS','vchrom','GeneNamesS') ;
     %      CaseNamesS
     %      vchrom
     %      GeneNamesS
+disp(['  File ' datfilename '.mat finished writing']) ; 
+disp(' ') ;
+
+
+%  Save Data as .xls Files, one for each gene,
+%  to be turned into .csv files in Excel.
+%
+for ig = 1:4 ;
+
+  disp(' ') ;
+  dfname = [datfilename GeneNamesS{ig}] ;
+
+  status0 = xlswrite(dfname,{'Genomic Coords'},1,'A1') ;
+  if status0 ;
+    disp(['  Wrote "Genomic Coordinates" to ' dfname '.xls']) ;
+  else ;
+    disp(['  Column headers write to ' dfname '.xls failed']) ;
+  end ;
+
+  status1 = xlswrite(dfname,CaseNamesS,1,'B1') ;
+  if status1 ;
+    disp(['  Wrote Column headers to ' dfname '.xls']) ;
+  else ;
+    disp(['  Column headers write to ' dfname '.xls failed']) ;
+  end ;
+
+  status2 = xlswrite(dfname,DataS{ig,1},1,'A2') ;
+  if status2 ;
+    disp(['  Wrote Row headers to ' dfname '.xls']) ;
+  else ;
+    disp(['  Row headers write to ' dfname '.xls failed']) ;
+  end ;
+
+  status3 = xlswrite(dfname,DataS{ig,2},1,'B2') ;
+  if status3 ;
+    disp(['  Wrote Main Data to ' dfname '.xls']) ;
+  else ;
+    disp(['  Main data write to ' dfname '.xls failed']) ;
+  end ;
+
+  if (status1 & status2 & status3) ;
+    disp(['Should now save ' dfname '.xls to a .csv file in Excel']) ;
+  end ;
+
+end ;
+
 
 
 
