@@ -1,0 +1,163 @@
+---
+title: "Lung Cancer Data Vignette"
+author: "Perry Haaland"
+date: "4/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+## Introduction
+
+-- To be copied from Chapter B? Check with Steve.
+
+## Reading the data
+
+-- Copied from Readme file in DerivedData folder.
+
+### Derived Data Files
+Early TCGA Data with RNAseq read depth curves for 4 genes. 
+
+Data from Matt Wilkerson, Oct. 2011. 
+
+The 4 genes are:
+* PIK3CA
+* CDKN2A
+* P10
+* STK11
+
+Files in this directory are intended for easy downloading and use
+
+###  File formats
+* All are matrices
+* All column headers are Case Names  (TCGA IDs)
+  * Note these are the same for all 4 genes
+* All row headers are Genomic Coordinates of Base Pairs
+* All main data entries are read counts
+* Matlab .mat file has all three genes in the same file
+  * Genes can be separated, and worked with, using read statements as in LungCancerViz.m in the MatlabScripts directory
+* Remaining file types are separate for each gene
+  *  Gene names are appended at the end of each filename 
+  
+### Reading the data file
+
+Their are four data files of interest, one for each of the four genes. These data files are in CSV format. We pick one of the files to work with as an example.
+
+```{r}
+CDKN2A_df <- read.csv("../DerivedData/LungCancer2011CDKN2A.csv",
+                      header = TRUE) %>%
+  as_tibble
+```
+
+There are 180 cases, namely the number of columns -1. There are 1709 genes; namely, the number of rows.
+
+```{r}
+dim(CDKN2A_df)
+```
+
+```{r}
+CDKN2A_df[1:5, 1:5]
+```
+
+### Examining case names
+
+The columns are the observed cases or samples. We can see that the names are extrememly long and make the dataset hard to view. 
+
+```{r}
+cnames <- names(CDKN2A_df)[-1]
+cnames[1:5]
+```
+
+Once we have a bit more insight into the data, we may decide to strip out parts of the case names that are uninformative. For now we are going to substitute simple case names to make the data frame easier to work with.
+
+```{r}
+names(CDKN2A_df)[-1] = paste0("Case", 1:(ncol(CDKN2A_df) - 1))
+head(CDKN2A_df)
+```
+
+### Examining Genomic Ranges
+
+The row names are the names of the genomic ranges.
+
+```{r}
+CDKN2A_df[1:5,1]
+```
+
+```{r}
+range(CDKN2A_df$Genomic.Coords)
+```
+
+For the purposes of graphing the data we are going to convert the Genomic Coordinates to relative positions. The relative positions are called Exonic NT number. We add that to the data frame.
+
+```{r}
+CDKN2A_df <- CDKN2A_df %>%
+  mutate(NT.Number = 1:nrow(CDKN2A_df)) %>%
+  select(Genomic.Coords, NT.Number, starts_with("Case"))
+CDKN2A_df[1:5,1:5]
+```
+
+
+## Examining the counts
+
+The data values are the counts of RNA reads at each genomic location (row) and for each subject (column). We take a look at the distribution of counts. First we note that there is a very long right tail.
+
+```{r}
+x <- CDKN2A_df %>%
+  select(-Genomic.Coords, -NT.Number) %>%
+  as_vector %>%
+  as.integer 
+data.frame(x = x) %>%
+  ggplot(aes(x = x)) +
+    geom_histogram(bins = 100) +
+  labs(x = "Read Count",
+       y = "Frequency")
+
+```
+
+We readily see that most of the counts are 0 or close to 0.
+
+```{r}
+table(x)[1:10]
+```
+## Plots of Read Counts versus Position
+
+In order to make the first series of graphs, we first pivot the data table to make the data format more amendable to standard methods in R.
+
+```{r}
+long_df <- CDKN2A_df %>%
+  pivot_longer(starts_with("Case"),
+               names_to = "Case",
+               values_to = "Count")
+```
+
+In this first plot, we show each case with a different line. The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads.
+
+```{r}
+long_df %>%
+  ggplot(aes(x= NT.Number, y = Count, group = Case)) +
+           geom_line(aes(color = Case)) +
+  theme(legend.position = "none") +
+  labs(x = "exonic NT number, not genomic position",
+       y = "RNA read depth",
+       title = "Gene = CDKN2A")
+  
+```
+
+In the next plot we transform the y-axis to reduce the right skew.
+
+```{r}
+long_df %>%
+  ggplot(aes(x= NT.Number, y = log10(Count+1), group = Case)) +
+           geom_line(aes(color = Case)) +
+  theme(legend.position = "none") +
+  labs(x = "exonic NT number, not genomic position",
+       y = "log10(RNA read depth + 1)",
+       title = "Gene = CDKN2A")
+  
+```
