@@ -134,6 +134,7 @@ long_df <- CDKN2A_df %>%
   pivot_longer(starts_with("Case"),
                names_to = "Case",
                values_to = "Count")
+head(long_df)
 ```
 
 In this first plot, we show each case with a different line. The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads.
