@@ -63,7 +63,7 @@ For the purposes of graphing the data we are going to convert the Genomic Coordi
 cases_df <- cases_df %>%
   mutate(NT.Number = 1:nrow(cases_df)) %>%
   select(Genomic.Coords, NT.Number, starts_with("Case"))
-CDKN2A_df[1:5,1:5]
+cases_df[1:5,1:5]
 ```
 
 
@@ -72,7 +72,7 @@ CDKN2A_df[1:5,1:5]
 The data values are the counts of RNA reads at each genomic location (row) and for each subject (column). We take a look at the distribution of counts. First we note that there is a very long right tail.
 
 ```{r}
-x <- CDKN2A_df %>%
+x <- cases_df %>%
   select(-Genomic.Coords, -NT.Number) %>%
   as_vector %>%
   as.integer 
