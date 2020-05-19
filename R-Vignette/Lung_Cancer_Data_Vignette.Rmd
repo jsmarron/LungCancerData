@@ -1,7 +1,7 @@
 ---
 title: "Lung Cancer Data Vignette"
 author: "Perry Haaland"
-date: "5/20/2020"
+date: "5/19/2020"
 output: html_document
 ---
 
@@ -132,10 +132,10 @@ colnames(rows_df) <- cases_df$NT.Number
 rows_df[1:5, 1:5]
 ```
 
-Now we are ready to do the PCA. Note that we standardize the counts at each position as part of the PCA. The first visualization is the standard scree plot.
+Now we are ready to do the PCA. Note that we standardize the counts at each position as part of the PCA. The first visualization is the standard scree plot. Note that we use the log transformation as above.
 
 ```{r,message=FALSE}
-pca.out <- prcomp(rows_df, scale = TRUE)
+pca.out <- prcomp(log10(rows_df + 1), scale = TRUE)
 fviz_eig(pca.out)
 ```
 
