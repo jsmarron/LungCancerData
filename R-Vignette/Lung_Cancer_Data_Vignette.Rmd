@@ -13,10 +13,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 All of the explanations and background are taken from Chapter B of OODA Book. by  S. Marron. These come from an RNAseq study of lung cancer, and in particular was an early data set collected as part of The Cancer Genome Atlas, Tomczak et al. [Tomczak2015TCGA]. The focus here is on the gene CDKN2A, which has long been known to be involved in many types of cancer. 
 
-Note that we are going to be using the collection of `tidyverse` packages and capabilities for the analysis.
+The purpose of this vignette is to supplement the OODA Book by providing some examples of the analysis using the R environment. Consequently, we won't be repeating the full analysis or explanation provided in the book, but rather demonstrating how to recreate some of the highlights of the analysis.
+
+Note that we are going to be using the collection of `tidyverse` packages and capabilities for the analysis. We also use the package `factoextra` for visualizing the results of the PCA analysis.
 
 ```{r, message=FALSE}
 library(tidyverse)
+library(factoextra)
 ```
 
 ## Reading and organizing the data
@@ -54,7 +57,7 @@ The columns are the observed cases or samples. We can see that the names are ext
 
 ```{r}
 names(cases_df)[-1] = paste0("Case", 1:(ncol(cases_df) - 1))
-head(cases_df)
+cases_df[1:5, 1:5]
 ```
 
 For the purposes of graphing the data we are going to convert the Genomic Coordinates to relative positions. The relative positions are called Exonic NT number. We add that to the data frame.
@@ -104,20 +107,7 @@ long_df <- cases_df %>%
 head(long_df)
 ```
 
-In this first plot, we show each case with a different line. The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads.
-
-```{r}
-long_df %>%
-  ggplot(aes(x= NT.Number, y = Count, group = Case)) +
-           geom_line(aes(color = Case)) +
-  theme(legend.position = "none") +
-  labs(x = "exonic NT number, not genomic position",
-       y = "RNA read depth",
-       title = "Gene = CDKN2A")
-  
-```
-
-In the next plot we transform the y-axis to reduce the right skew.
+In this first plot, we show each case with a different line. The y value, `Count` has been transformed by log10(y+1). The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads.
 
 ```{r}
 long_df %>%
@@ -142,6 +132,24 @@ colnames(rows_df) <- cases_df$NT.Number
 rows_df[1:5, 1:5]
 ```
 
-Now we are ready to do the PCA.
+Now we are ready to do the PCA. Note that we standardize the counts at each position as part of the PCA. The first visualization is the standard scree plot.
+
+```{r,message=FALSE}
+pca.out <- prcomp(rows_df, scale = TRUE)
+fviz_eig(pca.out)
+```
+
+Next we look at the scatter plot of the first two dimensions.
+
+```{r}
+fviz_pca_ind(pca.out,
+             axes = c(1, 2),
+             geom = "point")
+```
 
 
+```{r}
+fviz_pca_ind(pca.out,
+             axes = c(2, 3),
+             geom = "point")
+```
