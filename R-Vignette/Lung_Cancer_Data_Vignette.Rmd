@@ -1,7 +1,7 @@
 ---
-title: "Lung Cancer Data Vignette"
+title: "Lung Cancer Data R:Vignette"
 author: "Perry Haaland"
-date: "5/19/2020"
+date: "5/20/2020"
 output: html_document
 ---
 
@@ -9,127 +9,232 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction
+## 1.0 Introduction
 
-All of the explanations and background are taken from Chapter B of OODA Book. by  S. Marron. These come from an RNAseq study of lung cancer, and in particular was an early data set collected as part of The Cancer Genome Atlas, Tomczak et al. [Tomczak2015TCGA]. The focus here is on the gene CDKN2A, which has long been known to be involved in many types of cancer. 
+The purpose of this R-Vignette is to help make the lung cancer data more easily accessible to someone who wants to analyze it using R. The intended consumer of this document is an experienced statistician or student who already has a working knowledge of R and a basic understanding of genomic statistics. If we are successful, there should be few surprises or difficulties getting started with the data analysis.
 
-The purpose of this vignette is to supplement the OODA Book by providing some examples of the analysis using the R environment. Consequently, we won't be repeating the full analysis or explanation provided in the book, but rather demonstrating how to recreate some of the highlights of the analysis.
+All of the explanations and background are taken from Chapter B of OODA Book. by  S. Marron. These come from an RNAseq study of lung cancer, and in particular was an early data set collected as part of The Cancer Genome Atlas, Tomczak et al. [Tomczak2015TCGA]. 
 
-Note that we are going to be using the collection of `tidyverse` packages and capabilities for the analysis. We also use the package `factoextra` for visualizing the results of the PCA analysis.
+This vignette can be viewed as a supplement the OODA Book by illustrating how to read and organize the data using the R environment. Consequently, we don't  repeat the analysis or explanation provided in the book, but rather try to reduce barriers to a new user to get started working with the data to either replicate the OODA analysis or extend it.
+
+Note that we are use the collection of `tidyverse` packages and capabilities for the analysis. We also use the package `factoextra` for visualizing the results of the PCA analysis.
 
 ```{r, message=FALSE}
 library(tidyverse)
 library(factoextra)
 ```
 
-## Reading and organizing the data
+In the Section 2, we read and examine the data sets for each gene. After some reorganization, we combine the data into one data frame that is easy to use in subsequent analysis. In Section 3, we examine summary statistics for the counts, consider the need for a log transformation, and we plot counts against genome position for each gene. In Section 4, we illustrate, for a single gene, how to organize the data for a Principal Components Analysis.
 
-Early TCGA Data with RNAseq read depth curves is provided for 4 genes. The data are from Matt Wilkerson, Oct. 2011. The 4 genes are:
+## 2.0 Read and Organize the Data
+
+In this section, we are going to read each of the data files and examine and compare the structures of the resulting data frames. We are also going to do some renaming and reorganizing of the data to facilitate downstream analysis in R. In particular, we construct some new variables and we convert each data frame to a long form that we then combine into one combined data frame.
+
+Early TCGA Data with RNAseq read depth curves are provided for 4 genes. The data are from Matt Wilkerson, Oct. 2011. The 4 genes are:
 
 * PIK3CA
 * CDKN2A
 * P10
 * STK11
 
-There is one file in the `DerivedData` folder for each of the four genes. We are concerned with the `csv` files. Each file contains a matrix of data. The first column is the Genomic Coordinate, whichc can be considered a row name. The remaining columns are subjects or case names  (TCGA IDs). The data entries are read counts. The gene name is included in the name of the file.
+There is one file in the `DerivedData` folder for each of the four genes. We are concerned with the `csv` files. Each file contains a matrix of data. The first column is the Genomic Coordinate, which can be considered a row name. The remaining columns are subjects or case names  (TCGA IDs). The data entries are read counts. The gene name is included in the name of the file.
 
-For this example we read the CDKN2A gene file. We are going to call this data frame `cases_df` to denote that the cases or observational units are the columns. For some parts of the analysis it will be more convenient to reformat the data so that cases are in rows. When we do that below, we will call that data frame `rows_df`.
+### 2.1 Read and examine the data
+
+We begin by reading each of the gene files into R as separate data frames.
 
 ```{r}
-cases_df <- read.csv("../DerivedData/LungCancer2011CDKN2A.csv",
+
+cdkn2a_df <- read.csv("../DerivedData/LungCancer2011CDKN2A.csv",
                       header = TRUE) %>%
   as_tibble
+p10_df <- read.csv("../DerivedData/LungCancer2011P10.csv",
+                      header = TRUE) %>%
+  as_tibble
+pik3ca_df <- read.csv("../DerivedData/LungCancer2011PIK3CA.csv",
+                      header = TRUE) %>%
+  as_tibble
+stk11_df <- read.csv("../DerivedData/LungCancer2011STK11.csv",
+                      header = TRUE) %>%
+  as_tibble
+
 ```
 
-As we see below, here are 180 cases, namely the number of columns -1. There are 1709 genes; namely, the number of rows.
+Next we compare the sizes of the imported data sets.
 
 ```{r}
-dim(cases_df)
+cat("CDNK2A dimensions =",dim(cdkn2a_df), "\n")
+cat("P10 dimensions =",dim(p10_df), "\n")
+cat("PIK3CA dimensions =",dim(pik3ca_df), "\n")
+cat("STK11 dimensions =",dim(stk11_df), "\n")
 ```
 
-A sample of the data as read are shown below:
+The data are organized so that the first column is the Genomic Coordinates and the remaining columns are the cases (observations). We next verify that the cases, that is, column names, are the same for each data frame.
 
 ```{r}
-cases_df[1:5, 1:5]
+all(colnames(cdkn2a_df)==colnames(p10_df))
+all(colnames(cdkn2a_df)==colnames(pik3ca_df))
+all(colnames(cdkn2a_df)==colnames(stk11_df))
 ```
 
-The columns are the observed cases or samples. We can see that the names are extrememly long and make the dataset hard to view. For the purposes of simplicity of presentation, we are going to substitute simple case names to make the data frame easier to work with.
+### 2.2 Rename and Reorganize the Data
+
+Now that we have verified the cases, we are going to do a bit or reorganizing so that the four data sets can be concatenated into a single data frame. We are going to also do some work to make the data sets a bit easier to work with.
+
+First we note that the case names are rather long and complicated. 
 
 ```{r}
-names(cases_df)[-1] = paste0("Case", 1:(ncol(cases_df) - 1))
-cases_df[1:5, 1:5]
+colnames(cdkn2a_df)[1:5]
 ```
 
-For the purposes of graphing the data we are going to convert the Genomic Coordinates to relative positions. The relative positions are called Exonic NT number. We add that to the data frame.
+So we are going to replace them with simpler versions.
 
 ```{r}
-cases_df <- cases_df %>%
-  mutate(NT.Number = 1:nrow(cases_df)) %>%
-  select(Genomic.Coords, NT.Number, starts_with("Case"))
-cases_df[1:5,1:5]
+case_names = paste0("Case", 1:(ncol(cdkn2a_df) - 1))
+names(cdkn2a_df)[-1] <- case_names
+names(p10_df)[-1]  <- case_names
+names(pik3ca_df)[-1]  <- case_names
+names(stk11_df)[-1]  <- case_names
 ```
 
+### 2.3 Compute new variables
 
-## Initial examination of the counts
-
-The data values are the counts of RNA reads at each genomic location (row) and for each subject (column). We take a look at the distribution of counts. First we note that there is a very long right tail.
+The data values for each gene are read counts at a particular genomic position, `Genomic.Coords`. These values are distinct for each gene. For subsequent analysis of each gene, we are primarily interested in the relative position in the genome for that particular gene. The relative positions are called Exonic NT Numbers. Next we add that variable to each data frame. We are also gone to add the gene name to each data frame to facilitate combining the data.
 
 ```{r}
-x <- cases_df %>%
-  select(-Genomic.Coords, -NT.Number) %>%
-  as_vector %>%
-  as.integer 
-data.frame(x = x) %>%
-  ggplot(aes(x = x)) +
-    geom_histogram(bins = 100) +
-  labs(x = "Read Count",
-       y = "Frequency")
-
+cdkn2a_df <- cdkn2a_df %>%
+  mutate(Gene.Name = "CDKN2A",
+         NT.Number = 1:nrow(cdkn2a_df)) %>%
+  select(Gene.Name, Genomic.Coords, NT.Number, starts_with("Case"))
+p10_df <- p10_df %>%
+  mutate(Gene.Name = "P10",
+         NT.Number = 1:nrow(p10_df)) %>%
+  select(Gene.Name, Genomic.Coords, NT.Number, starts_with("Case"))
+pik3ca_df <- pik3ca_df %>%
+  mutate(Gene.Name = "PIK3CA",
+         NT.Number = 1:nrow(pik3ca_df)) %>%
+  select(Gene.Name, Genomic.Coords, NT.Number, starts_with("Case"))
+stk11_df <- stk11_df %>%
+  mutate(Gene.Name = "STK11",
+         NT.Number = 1:nrow(stk11_df)) %>%
+  select(Gene.Name, Genomic.Coords, NT.Number, starts_with("Case"))
 ```
 
-We readily see that most of the counts are 0 or close to 0.
+### 2.4 Combine into one data frame
 
-```{r}
-table(x)[1:10]
-```
-
-For the purposes of subsequent analysis, we will transform the counts using a log transformation. See below. 
-
-### Plots of Read Counts versus Position
+Now we are ready to convert to a long form of each data set and combine them into one data frame.
 
 In order to make the first series of graphs, we first pivot the data table to make the data format more amendable to standard methods in R.
 
 ```{r}
-long_df <- cases_df %>%
+long1_df <- cdkn2a_df %>%
   pivot_longer(starts_with("Case"),
                names_to = "Case",
                values_to = "Count")
+long2_df <- p10_df %>%
+  pivot_longer(starts_with("Case"),
+               names_to = "Case",
+               values_to = "Count")
+long3_df <- pik3ca_df %>%
+  pivot_longer(starts_with("Case"),
+               names_to = "Case",
+               values_to = "Count")
+long4_df <- stk11_df %>%
+  pivot_longer(starts_with("Case"),
+               names_to = "Case",
+               values_to = "Count")
+long_df <- rbind(long1_df, long2_df, long3_df, long4_df)
 head(long_df)
 ```
 
-In this first plot, we show each case with a different line. The y value, `Count` has been transformed by log10(y+1). The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads.
+To conclude this section, we examine and verify visually, by comparison to the results above, that the sizes of the data for each gene are correct.
 
 ```{r}
 long_df %>%
+  group_by(Gene.Name) %>%
+  summarize(n.coords = length(unique(Genomic.Coords)),
+            n.cases = length(unique(Case)))
+```
+
+
+## 3.0 Comparison of Counts Across Genes
+
+In order to be confident that the data is comparable across the genes, we next look at the distribution of counts for each gene. 
+
+### 3.1 Summary statistics
+
+The following result shows values of summary statistics for each gene. We note that there 
+
+```{r}
+long_df %>%
+  group_by(Gene.Name) %>%
+  summarize(length = length(unique(Genomic.Coords)),
+         total = sum(Count),
+         min = min(Count),
+         max = max(Count),
+         mean = round(mean(Count), 1),
+         median = round(median(Count),1), 
+         std = round(sqrt(var(Count)),1), 
+         mad = round(mad(Count),1))
+```
+
+Without commenting on the importance of this finding, we note that there are considerable differences in the number of reads (counts) for the different genes in total and also the average counts per position.
+
+### 3.2 Skewness and log transform
+
+First we note that there is a very long right tail to the counts for each gene.
+
+```{r}
+long_df %>%
+  ggplot(aes(x = Count)) + 
+  geom_histogram(bins = 100) +
+  facet_wrap(~ Gene.Name) + 
+  labs(x = "Read Count",
+       y = "Frequency")
+```
+
+We readily see that most of the counts are 0 or close to 0. For subsequent analysis, we will typically consider the response to be `log10(count + 1)`, which we show below for comparison.
+
+
+```{r}
+long_df %>%
+  ggplot(aes(x = log10(Count + 1))) + 
+  geom_histogram(bins = 100) +
+  facet_wrap(~ Gene.Name) + 
+  labs(x = "log10(Read Count + 1)",
+       y = "Frequency")
+```
+
+
+### 3.3 Plots of read counts versus position
+
+We conclude this section with a plot of read counts versus position within each gene. We show each case with a different line. The y value, `Count` has been transformed by log10(y+1). The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads. We are also reminded the the four genes have quite different lengths.
+
+```{r, fig.height=12}
+long_df %>%
   ggplot(aes(x= NT.Number, y = log10(Count+1), group = Case)) +
            geom_line(aes(color = Case)) +
+  facet_grid(rows = vars(Gene.Name),
+             scales = "free") +
   theme(legend.position = "none") +
   labs(x = "exonic NT number, not genomic position",
-       y = "log10(RNA read depth + 1)",
-       title = "Gene = CDKN2A")
+       y = "log10(RNA read depth + 1)") +
+  theme(axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size = 12),
+        strip.text = element_text(size = 12))
   
 ```
 
-## Principle Components Analysis
+## 4.0 Principal Components Analysis
 
-The plots above don't reveal any particularly interesting structure. The next step is to examine the results of Principle Components Analysis (PCA). To do this we are going to reformat the data so that cases are in rows.
+We conclude this vignette, with a example of a Principal Components Analysis (PCA) for one of the genes. In particular, we focus on the gene CDKN2A, which has long been known to be involved in many types of cancer. To do the PCA, we reformat the data for the gene so that the cases are in rows.
+
 
 ```{r}
-rows_df <- cases_df %>%
-  select(-Genomic.Coords, -NT.Number) %>%
+rows_df <- cdkn2a_df %>%
+  select(-Gene.Name, -Genomic.Coords, -NT.Number) %>%
   t()
-colnames(rows_df) <- cases_df$NT.Number
-rows_df[1:5, 1:5]
+colnames(rows_df) <- cdkn2a_df$NT.Number
 ```
 
 Now we are ready to do the PCA. Note that we standardize the counts at each position as part of the PCA. The first visualization is the standard scree plot. Note that we use the log transformation as above.
@@ -153,3 +258,9 @@ fviz_pca_ind(pca.out,
              axes = c(2, 3),
              geom = "point")
 ```
+
+## 5.0 Conclusions
+
+In this vignette, we demonstrated how to read count data for each gene. We examined the structure of each data file. We reviewed summary statistics. We noted the use of a log transformation to adjust for skewness. We did a brief examination of the patterns of counts across read positions in each gene. Finally, we demonstrated the application of PCA to one of the genes.
+
+Hopefully, we have accomplished our purpose of paving the way for an experienced statistician and user of R to quickly get up to speed on using the data set.
