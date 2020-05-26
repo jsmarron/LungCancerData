@@ -99,7 +99,7 @@ names(stk11_df)[-1]  <- case_names
 
 ### 2.3 Compute new variables
 
-The data values for each gene are read counts at a particular genomic position, `Genomic.Coords`. These values are distinct for each gene. For subsequent analysis of each gene, we are primarily interested in the relative position in the genome for that particular gene. The relative positions are called Exonic NT Numbers. Next we add that variable to each data frame. We are also gone to add the gene name to each data frame to facilitate combining the data.
+The data values for each gene are read counts at a particular genomic position, `Genomic.Coords`. These values are distinct for each gene. For subsequent analysis of each gene, we are primarily interested in the relative position in the genome for that particular gene. The relative positions are called Exonic NT Numbers. Next we add that variable to each data frame. We are also going to add the gene name to each data frame to facilitate combining the data.
 
 ```{r}
 cdkn2a_df <- cdkn2a_df %>%
@@ -259,7 +259,7 @@ fviz_pca_ind(pca.out,
              geom = "point")
 ```
 
-## 5.0 Conclusions
+## 5.0 Conclusion
 
 In this vignette, we demonstrated how to read count data for each gene. We examined the structure of each data file. We reviewed summary statistics. We noted the use of a log transformation to adjust for skewness. We did a brief examination of the patterns of counts across read positions in each gene. Finally, we demonstrated the application of PCA to one of the genes.
 
