@@ -1,7 +1,7 @@
 ---
 title: "Lung Cancer Data R-Vignette"
 author: "Perry Haaland"
-date: "5/26/2020"
+date: "5/27/2020"
 output: pdf_document
 ---
 
@@ -13,9 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The purpose of this R-Vignette is to help make the lung cancer data more easily accessible to someone who wants to analyze it using R. The intended consumer of this document is an experienced statistician or student who already has a working knowledge of R and a basic understanding of genomic statistics. If we are successful, there should be few surprises or difficulties getting started with the data analysis.
 
-All of the explanations and background are taken from Chapter B of OODA Book. by  S. Marron. These come from an RNAseq study of lung cancer, and in particular was an early data set collected as part of The Cancer Genome Atlas, Tomczak et al. [Tomczak2015TCGA]. 
+All of the explanations and background are taken from Chapter 4.1.1 of the book **Object Oriented Data Analysis**  by  J. S. Marron and Ian Dryden (OODA). These come from an RNAseq study of lung cancer, and in particular was an early data set collected as part of The Cancer Genome Atlas (John N Weinstein, Eric A Collisson, Gordon B Mills, Kenna R Mills Shaw, Brad A Ozenberger, Kyle Ellrott, Ilya Shmulevich, Chris Sander, Joshua M Stuart, Cancer Genome Atlas Research Network, et al. The cancer genome atlas pan-cancer analysis project. Nature genetics, 45(10):1113-1120, 2013). 
 
-This vignette can be viewed as a supplement the OODA Book by illustrating how to read and organize the data using the R environment. Consequently, we don't  repeat the analysis or explanation provided in the book, but rather try to reduce barriers to a new user to get started working with the data to either replicate the OODA analysis or extend it.
+This vignette can be viewed as a supplement to the **OODA** book that illustrates how to read and organize the data using the R environment. Consequently, we don't  repeat the analysis or explanations provided in the book, but rather try to reduce barriers to a new user to get started working with the data to either replicate the OODA analysis or extend it.
 
 Note that we are use the collection of `tidyverse` packages and capabilities for the analysis. We also use the package `factoextra` for visualizing the results of the PCA analysis.
 
@@ -24,13 +24,13 @@ library(tidyverse)
 library(factoextra)
 ```
 
-In the Section 2, we read and examine the data sets for each gene. After some reorganization, we combine the data into one data frame that is easy to use in subsequent analysis. In Section 3, we examine summary statistics for the counts, consider the need for a log transformation, and we plot counts against genome position for each gene. In Section 4, we illustrate, for a single gene, how to organize the data for a Principal Components Analysis.
+In the Section 2, we read and examine the data sets for each gene. After some reorganization, we combine the data into one data frame that is easy to use in subsequent analysis. In Section 3, we examine summary statistics for the counts, consider the need for a log transformation, and we plot counts against genome position for each gene. In Section 4, we consider the total number of counts by subject and gene with the intent to aid the user in considering whether or not there might be outliers in the data. In Section 5, we illustrate, for a single gene, how to organize the data for a Principal Components Analysis.
 
 ## 2.0 Read and Organize the Data
 
 In this section, we are going to read each of the data files and examine and compare the structures of the resulting data frames. We are also going to do some renaming and reorganizing of the data to facilitate downstream analysis in R. In particular, we construct some new variables and we convert each data frame to a long form that we then combine into one combined data frame.
 
-Early TCGA Data with RNAseq read depth curves are provided for 4 genes. The data are from Matt Wilkerson, Oct. 2011. The 4 genes are:
+Early TCGA Data with RNAseq read depth curves are provided for 4 genes; namely,
 
 * PIK3CA
 * CDKN2A
@@ -44,7 +44,6 @@ There is one file in the `DerivedData` folder for each of the four genes. We are
 We begin by reading each of the gene files into R as separate data frames.
 
 ```{r}
-
 cdkn2a_df <- read.csv("../DerivedData/LungCancer2011CDKN2A.csv",
                       header = TRUE) %>%
   as_tibble
@@ -163,7 +162,7 @@ In order to be confident that the data is comparable across the genes, we next l
 
 ### 3.1 Summary statistics
 
-The following result shows values of summary statistics for each gene. We note that there 
+The following result shows values of summary statistics computed on the raw counts for each gene.  
 
 ```{r}
 long_df %>%
@@ -205,8 +204,26 @@ long_df %>%
        y = "Frequency")
 ```
 
+### 3.3 Summary statistics on transformed data
 
-### 3.3 Plots of read counts versus position
+The following result shows values of summary statistics computed on the log transformed counts for each gene.  
+
+```{r}
+long_df %>%
+  group_by(Gene.Name) %>%
+  mutate(logCount = log10(Count + 1)) %>%
+  summarize(length = length(unique(Genomic.Coords)),
+         min = min(logCount),
+         max = max(logCount),
+         mean = round(mean(logCount), 1),
+         median = round(median(logCount),1), 
+         std = round(sqrt(var(logCount)),1), 
+         mad = round(mad(logCount),1))
+```
+
+We note that the mean and median values for each gene are now much closer.
+
+### 3.4 Plots of read counts versus position
 
 We conclude this section with a plot of read counts versus position within each gene. We show each case with a different line. The y value, `Count` has been transformed by log10(y+1). The line colors are recycled and don't have any significance. We note that there are some regions of the genome that have very few or no reads. We are also reminded the the four genes have quite different lengths.
 
@@ -214,8 +231,7 @@ We conclude this section with a plot of read counts versus position within each 
 long_df %>%
   ggplot(aes(x= NT.Number, y = log10(Count+1), group = Case)) +
            geom_line(aes(color = Case)) +
-  facet_grid(rows = vars(Gene.Name),
-             scales = "free") +
+  facet_grid(rows = vars(Gene.Name)) +
   theme(legend.position = "none") +
   labs(x = "exonic NT number, not genomic position",
        y = "log10(RNA read depth + 1)") +
@@ -225,7 +241,40 @@ long_df %>%
   
 ```
 
-## 4.0 Principal Components Analysis
+## 4.0 Consideration of Possible Outliers
+
+In the figure above, we note that there are some curves that are very close to zero counts across each of the genes. This is itself is not a cause for concern as any of these genes could be expressed at low levels or very high levels. Without the intent of making a judgement about whether any particular cases are outliers, which we leave to the reader, we provide some sample computations to check for difference in read counts across subjects (`Cases`).
+
+The figure below shows the total counts on a per case basis for each gene.
+
+```{r}
+long_df %>%
+  group_by(Gene.Name, Case) %>%
+  summarize(total = sum(Count)) %>%
+  ggplot(aes(x = total)) +
+    geom_histogram(bins = 100) +
+    facet_wrap(~ Gene.Name) + 
+    labs(x = "Total Counts by Case and Gene",
+       y = "Frequency")
+
+```
+
+The figure below shows the total counts by `Case` across all genes.
+
+```{r}
+long_df %>%
+  group_by(Case) %>%
+  summarize(total = sum(Count)) %>%
+  ggplot(aes(x = total)) +
+    geom_histogram(bins = 100) +
+    labs(x = "Total Counts by Case",
+       y = "Frequency")
+
+```
+
+From this point, the interested reader could invesigate further the cases at either ends of the extremes for total counts.
+
+## 5.0 Principal Components Analysis
 
 We conclude this vignette, with a example of a Principal Components Analysis (PCA) for one of the genes. In particular, we focus on the gene CDKN2A, which has long been known to be involved in many types of cancer. To do the PCA, we reformat the data for the gene so that the cases are in rows.
 
@@ -246,14 +295,14 @@ fviz_eig(pca.out)
 
 Next we look at the scatter plot of the first two dimensions.
 
-```{r}
+```{r,fig.height=4}
 fviz_pca_ind(pca.out,
              axes = c(1, 2),
              geom = "point")
 ```
 
 
-```{r}
+```{r,fig.height=4}
 fviz_pca_ind(pca.out,
              axes = c(2, 3),
              geom = "point")
@@ -261,6 +310,6 @@ fviz_pca_ind(pca.out,
 
 ## 5.0 Conclusion
 
-In this vignette, we demonstrated how to read count data for each gene. We examined the structure of each data file. We reviewed summary statistics. We noted the use of a log transformation to adjust for skewness. We did a brief examination of the patterns of counts across read positions in each gene. Finally, we demonstrated the application of PCA to one of the genes.
+In this vignette, we demonstrated how to the TCGA read count data for each gene. We examined the structure of each data file. We reviewed summary statistics. We noted the use of a log transformation to adjust for skewness. We did a brief examination of the patterns of counts across read positions in each gene. We showed some computations that could be used to evaluate the data for the presence of outliers. Finally, we demonstrated the application of PCA to one of the genes.
 
-Hopefully, we have accomplished our purpose of paving the way for an experienced statistician and user of R to quickly get up to speed on using the data set.
+Hopefully, we accomplished our purpose of paving the way for an experienced statistician and user of R to quickly get up to speed on using the data set. We remind the reader that Chapter 4.1 of the **OODA** book provides a detailed presentation of the exporatory analysis of this data. A further discussion on confirmatory analysis can be found in Chapter 14.
